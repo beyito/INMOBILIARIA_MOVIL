@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "595171931381",
+    "project_id": "si2inmobiliaria",
+    "storage_bucket": "si2inmobiliaria.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:595171931381:android:90a864d8e48fd8fdcb01bc",
+        "android_client_info": {
+          "package_name": "com.example.movil_inmobiliaria"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWTv82yAQkGeyhyrKBNx6mX3PFWJxns1Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
