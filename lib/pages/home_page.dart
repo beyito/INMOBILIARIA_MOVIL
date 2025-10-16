@@ -13,6 +13,7 @@ import '../models/privilegio_model.dart';
 import '../views/contacto/chat_list_view.dart';
 import '../views/inmueble/registrar_inmueble_view.dart';
 import '../views/inmueble/mis_inmuebles_view.dart';
+import '../views/contrato/contrato_view.dart';
 
 // Instancia global del plugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -211,6 +212,19 @@ class _HomePageState extends State<HomePage> {
             );
             viewRoutes.add(const Center(child: Text('FAVORITOS')));
             rutas.add('/home/5');
+          }
+          // 🔹 Contrato (si tiene privilegio)
+          if (privilegios.any(
+            (p) => p.componente == 'contrato' && p.puedeLeer,
+          )) {
+            items.add(
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.receipt_long),
+                label: 'Contratos',
+              ),
+            );
+            viewRoutes.add(ContratoView());
+            rutas.add('/home/7');
           }
 
           // 🔹 Más (sin restricción)
