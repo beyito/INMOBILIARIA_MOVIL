@@ -56,6 +56,9 @@ class _CustomBottomNavigationState extends State<CustomBottomNavigation> {
         final puedeVerAgentes = privilegios.any(
           (p) => p.componente == 'usuario' && p.puedeLeer,
         );
+        final puedeVerContratos = privilegios.any(
+          (p) => p.componente == 'contrato' && p.puedeLeer,
+        );
         // Ítems base (no restringidos)
         final items = <BottomNavigationBarItem>[];
         final rutas = <String>[];
@@ -112,6 +115,15 @@ class _CustomBottomNavigationState extends State<CustomBottomNavigation> {
             ),
           );
           rutas.add('/favoritos');
+        }
+        if (puedeVerContratos) {
+          items.add(
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long),
+              label: 'Contratos',
+            ),
+          );
+          rutas.add('/contratos');
         }
 
         // Ruta sin restricción

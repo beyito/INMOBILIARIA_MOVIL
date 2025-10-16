@@ -9,6 +9,7 @@ import 'package:movil_inmobiliaria/views/usuario/registerCliente_view.dart';
 import 'package:movil_inmobiliaria/views/usuario/registerAgente_view.dart';
 import 'package:movil_inmobiliaria/views/usuario/recuperacionPassword_view.dart';
 import 'package:movil_inmobiliaria/views/usuario/perfil_view.dart';
+import 'package:movil_inmobiliaria/views/contrato/contrato_view.dart';
 
 // Función para verificar si hay token
 Future<bool> isLoggedIn() async {
@@ -47,6 +48,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/recuperar-password',
       builder: (context, state) => const RecuperacionPasswordView(),
+    ),
+    GoRoute(
+      path: '/contrato',
+      builder: (context, state) => const ContratoView(),
     ),
   ],
   redirect: (context, state) async {
