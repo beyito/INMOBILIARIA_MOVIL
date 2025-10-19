@@ -17,6 +17,37 @@ class _AgendaViewState extends State<AgendaView> {
   DateTime focused = DateTime.now();
   late Future<List<CitaModel>> future;
 
+  // Meses y días en español (sin usar locale)
+  static const _meses = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  static const _mesesCorto = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  static const _diasCorto = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
   @override
   void initState() {
     super.initState();
@@ -24,10 +55,10 @@ class _AgendaViewState extends State<AgendaView> {
   }
 
   Future<List<CitaModel>> _load() {
-    // Si tu backend NO soporta filtros desde/hasta, deja solo: return api.listar(mias:true);
+    // Carga las citas del mes visible
     final monthStart = DateTime(focused.year, focused.month, 1);
     final monthEnd = DateTime(focused.year, focused.month + 1, 0);
-    final f = DateFormat('yyyy-MM-dd');
+    final f = DateFormat('yyyy-MM-dd'); // sin locale
     return api.listar(
       mias: true,
       desde: f.format(monthStart),
@@ -42,17 +73,16 @@ class _AgendaViewState extends State<AgendaView> {
     });
   }
 
-  /// Normaliza cualquier formato de fecha del backend a 'yyyy-MM-dd'
+  // Normaliza cualquier fecha del backend a 'yyyy-MM-dd'
   String _toDateKey(String raw) {
     if (raw.isEmpty) return '';
-    // Si viene "YYYY-MM-DDTHH:mm..." toma solo la fecha
     final cut = raw.length >= 10 ? raw.substring(0, 10) : raw;
     if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(cut)) return cut;
     final dt = DateTime.tryParse(raw);
     return dt != null ? DateFormat('yyyy-MM-dd').format(dt) : cut;
   }
 
-  /// Mapa: 'yyyy-MM-dd' -> lista de citas de ese día
+  // Agrupa citas por día
   Map<String, List<CitaModel>> _groupByDay(List<CitaModel> all) {
     final map = <String, List<CitaModel>>{};
     for (final c in all) {
@@ -60,16 +90,25 @@ class _AgendaViewState extends State<AgendaView> {
       if (key.isEmpty) continue;
       map.putIfAbsent(key, () => []).add(c);
     }
-    // ordena cada lista por hora inicio
     for (final k in map.keys) {
       map[k]!.sort((a, b) => a.horaInicio.compareTo(b.horaInicio));
     }
     return map;
   }
 
+  String _mesAnioEs(DateTime d) {
+    final m = _meses[d.month - 1];
+    return '${m[0].toUpperCase()}${m.substring(1)} ${d.year}';
+  }
+
+  String _diaMesCortoEs(DateTime d) {
+    final m = _mesesCorto[d.month - 1];
+    return '${d.day} $m';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final monthText = DateFormat('MMMM yyyy').format(focused);
+    final tituloMes = _mesAnioEs(focused);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Agenda')),
@@ -99,7 +138,7 @@ class _AgendaViewState extends State<AgendaView> {
 
           return Column(
             children: [
-              // Header de mes
+              // Header de mes con flechas
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Row(
@@ -111,7 +150,7 @@ class _AgendaViewState extends State<AgendaView> {
                     Expanded(
                       child: Center(
                         child: Text(
-                          monthText[0].toUpperCase() + monthText.substring(1),
+                          tituloMes,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
@@ -127,7 +166,28 @@ class _AgendaViewState extends State<AgendaView> {
                 ),
               ),
 
-              // 🔹 Calendario propio con puntitos en días con citas (sin paquetes)
+              // Encabezado: días de la semana (español)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: List.generate(7, (i) {
+                    return Expanded(
+                      child: Center(
+                        child: Text(
+                          _diasCorto[i],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+
+              // Calendario mensual propio con puntos
               _MonthGrid(
                 month: DateTime(focused.year, focused.month, 1),
                 selected: focused,
@@ -147,7 +207,7 @@ class _AgendaViewState extends State<AgendaView> {
                     const Icon(Icons.today, size: 18),
                     const SizedBox(width: 6),
                     Text(
-                      'Citas de ${DateFormat('d MMM').format(focused)}',
+                      'Citas de ${_diaMesCortoEs(focused)}',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -227,9 +287,9 @@ class _AgendaViewState extends State<AgendaView> {
   }
 }
 
-/// ─────────────────────────────────────────────────────────────────────────
-/// Calendario mensual simple con puntos en días con eventos (sin paquetes)
-/// ─────────────────────────────────────────────────────────────────────────
+/// ─────────────────────────────────────────────────────────
+/// Calendario mensual simple con puntos (sin usar locale)
+/// ─────────────────────────────────────────────────────────
 class _MonthGrid extends StatelessWidget {
   final DateTime month; // primer día del mes
   final DateTime selected; // día seleccionado
@@ -247,110 +307,70 @@ class _MonthGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final first = month;
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    final startWeekday = first.weekday % 7; // 0=Domingo con %7
+
+    // weekday: 1=lun ... 7=dom; queremos 0..6 con lunes=0
+    final startWeekday = (first.weekday + 6) % 7;
     final totalCells = startWeekday + daysInMonth;
-    final rows = ((totalCells) / 7.0).ceil();
+    final rows = (totalCells / 7.0).ceil();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
-        children: [
-          // Encabezado D L M M J V S
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: const [
-                _Dow('S'),
-                _Dow('M'),
-                _Dow('T'),
-                _Dow('W'),
-                _Dow('T'),
-                _Dow('F'),
-                _Dow('S'),
-              ],
-            ),
-          ),
-          // Grilla de días
-          Column(
-            children: List.generate(rows, (r) {
-              return Row(
-                children: List.generate(7, (c) {
-                  final idx = r * 7 + c;
-                  final dayNum = idx - startWeekday + 1;
-                  if (dayNum < 1 || dayNum > daysInMonth) {
-                    return const Expanded(child: SizedBox(height: 42));
-                  }
-                  final date = DateTime(month.year, month.month, dayNum);
-                  final isSelected = DateUtils.isSameDay(date, selected);
-                  final event = hasEvents(date);
+        children: List.generate(rows, (r) {
+          return Row(
+            children: List.generate(7, (c) {
+              final idx = r * 7 + c;
+              final dayNum = idx - startWeekday + 1;
+              if (dayNum < 1 || dayNum > daysInMonth) {
+                return const Expanded(child: SizedBox(height: 42));
+              }
+              final date = DateTime(month.year, month.month, dayNum);
+              final isSelected = DateUtils.isSameDay(date, selected);
+              final event = hasEvents(date);
 
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => onSelect(date),
-                      child: Container(
-                        height: 42,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.primary.withOpacity(.15)
-                              : null,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '$dayNum',
-                              style: TextStyle(
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            if (event)
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onSelect(date),
+                  child: Container(
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(.15)
+                          : null,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  );
-                }),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$dayNum',
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        if (event)
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               );
             }),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Dow extends StatelessWidget {
-  final String t;
-  const _Dow(this.t, {super.key});
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: (MediaQuery.of(context).size.width - 16) / 7,
-      child: Center(
-        child: Text(
-          t,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade700,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+          );
+        }),
       ),
     );
   }

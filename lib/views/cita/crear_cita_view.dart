@@ -37,21 +37,25 @@ class _CrearCitaViewState extends State<CrearCitaView> {
     setState(() {});
   }
 
-  // ───────── FECHA en español (solo aquí) ─────────
+  // ───────── FECHA en español (sin locale, con calendario propio) ─────────
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final d = await showDatePicker(
+    final initial = data["fecha_cita"].isEmpty
+        ? now
+        : DateTime.tryParse(data["fecha_cita"]) ?? now;
+
+    final selected = await showModalBottomSheet<DateTime>(
       context: context,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 2),
-      initialDate: now,
-      //locale: const Locale('es'), // 👈 textos del diálogo en español
-      helpText: 'Selecciona la fecha',
-      cancelText: 'Cancelar',
-      confirmText: 'Aceptar',
+      isScrollControlled: true,
+      builder: (ctx) => _DatePickerSheet(
+        initialDate: initial,
+        firstDate: DateTime(now.year - 1),
+        lastDate: DateTime(now.year + 2),
+      ),
     );
-    if (d != null) {
-      data["fecha_cita"] = DateFormat('yyyy-MM-dd').format(d);
+
+    if (selected != null) {
+      data["fecha_cita"] = DateFormat('yyyy-MM-dd').format(selected);
       setState(() {});
     }
   }
@@ -210,6 +214,234 @@ class _CrearCitaViewState extends State<CrearCitaView> {
                   Navigator.of(context).pop(true);
                 },
                 child: const Text('Crear cita'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// ─────────────────────────────────────────────────────────
+/// Hoja inferior: Calendario en español SIN locale global
+/// ─────────────────────────────────────────────────────────
+class _DatePickerSheet extends StatefulWidget {
+  final DateTime initialDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+
+  const _DatePickerSheet({
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+  });
+
+  @override
+  State<_DatePickerSheet> createState() => _DatePickerSheetState();
+}
+
+class _DatePickerSheetState extends State<_DatePickerSheet> {
+  late DateTime _selected;
+  late DateTime _visibleMonth;
+
+  static const _meses = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  static const _diasCorto = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = DateTime(
+      widget.initialDate.year,
+      widget.initialDate.month,
+      widget.initialDate.day,
+    );
+    _visibleMonth = DateTime(_selected.year, _selected.month, 1);
+  }
+
+  void _changeMonth(int delta) {
+    setState(() {
+      _visibleMonth = DateTime(
+        _visibleMonth.year,
+        _visibleMonth.month + delta,
+        1,
+      );
+    });
+  }
+
+  bool _isDisabled(DateTime d) {
+    return d.isBefore(
+          DateTime(
+            widget.firstDate.year,
+            widget.firstDate.month,
+            widget.firstDate.day,
+          ),
+        ) ||
+        d.isAfter(
+          DateTime(
+            widget.lastDate.year,
+            widget.lastDate.month,
+            widget.lastDate.day,
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tituloMes =
+        '${_meses[_visibleMonth.month - 1][0].toUpperCase()}${_meses[_visibleMonth.month - 1].substring(1)} ${_visibleMonth.year}';
+    final daysInMonth = DateTime(
+      _visibleMonth.year,
+      _visibleMonth.month + 1,
+      0,
+    ).day;
+    final startWeekday =
+        (DateTime(_visibleMonth.year, _visibleMonth.month, 1).weekday + 6) %
+        7; // lunes=0
+    final totalCells = startWeekday + daysInMonth;
+    final rows = (totalCells / 7.0).ceil();
+
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header con mes
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: () => _changeMonth(-1),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        tituloMes,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: () => _changeMonth(1),
+                  ),
+                ],
+              ),
+
+              // Días de la semana
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                child: Row(
+                  children: List.generate(
+                    7,
+                    (i) => Expanded(
+                      child: Center(
+                        child: Text(
+                          _diasCorto[i],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Grilla de días
+              Column(
+                children: List.generate(rows, (r) {
+                  return Row(
+                    children: List.generate(7, (c) {
+                      final idx = r * 7 + c;
+                      final dayNum = idx - startWeekday + 1;
+                      if (dayNum < 1 || dayNum > daysInMonth) {
+                        return const Expanded(child: SizedBox(height: 44));
+                      }
+                      final date = DateTime(
+                        _visibleMonth.year,
+                        _visibleMonth.month,
+                        dayNum,
+                      );
+                      final disabled = _isDisabled(date);
+                      final isSelected = DateUtils.isSameDay(date, _selected);
+
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: disabled
+                              ? null
+                              : () => setState(() => _selected = date),
+                          child: Container(
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withOpacity(.15)
+                                  : null,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$dayNum',
+                              style: TextStyle(
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: disabled ? Colors.grey : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  );
+                }),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Botones
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    child: const Text('Cancelar'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, _selected),
+                    child: const Text('Aceptar'),
+                  ),
+                ],
               ),
             ],
           ),
