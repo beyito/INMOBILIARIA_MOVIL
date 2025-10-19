@@ -14,6 +14,7 @@ import '../views/contacto/chat_list_view.dart';
 import '../views/inmueble/registrar_inmueble_view.dart';
 import '../views/inmueble/mis_inmuebles_view.dart';
 import '../views/contrato/contrato_view.dart';
+import 'package:movil_inmobiliaria/views/cita/agenda_view.dart';
 
 // Instancia global del plugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -225,6 +226,17 @@ class _HomePageState extends State<HomePage> {
             );
             viewRoutes.add(ContratoView());
             rutas.add('/home/7');
+          }
+          // 🔹 Agenda (si tiene privilegio 'cita' leer)
+          if (privilegios.any((p) => p.componente == 'cita' && p.puedeLeer)) {
+            items.add(
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_month_outlined),
+                label: 'Agenda',
+              ),
+            );
+            viewRoutes.add(const AgendaView());
+            rutas.add('/home/8');
           }
 
           // 🔹 Más (sin restricción)
