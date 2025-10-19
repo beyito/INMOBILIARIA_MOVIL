@@ -46,40 +46,42 @@ class UsuarioService {
     }
   }
 
-  Future<ApiResponse<UsuarioModel>> editarPerfil(UsuarioModel usuario) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    final id = prefs.getInt('id');
+  Future<Map<String, dynamic>> editarPerfil(int userId, Map<String, dynamic> data) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
 
-    if (token == null || id == null) {
-      return ApiResponse.error("Sesión no válida");
-    }
+  if (token == null) {
+    return {'success': false, 'message': 'Usuario no autenticado'};
+  }
 
+  try {
     final response = await http.patch(
-      Uri.parse('${Config.baseUrl}/usuario/editar_usuario/$id'),
+      Uri.parse('$baseUrl/editar_usuario/$userId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Token $token',
       },
-      body: jsonEncode(usuario.toJson()),
-    );
+      body: jsonEncode(data),
+    ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+    final resData = jsonDecode(response.body);
+    
+    // V--- AÑADE ESTE PRINT PARA VER LA RESPUESTA COMPLETA ---V
+    print('RESPUESTA DEL SERVIDOR (EDITAR PERFIL): $resData');
 
-      if (data['status'] == 2) {
-        return ApiResponse.error(
-          "No tienes permisos para acceder a esta función",
-        );
-      }
-
-      final usuarioMap = data['values']['usuario'] ?? data['values'];
-      final usuarioActualizado = UsuarioModel.fromJson(usuarioMap);
-      return ApiResponse.success(usuarioActualizado);
+    if (resData['status'] == 1) {
+      return {'success': true, 'data': resData['values']};
     } else {
-      return ApiResponse.error(
-        "Error al actualizar perfil (${response.statusCode})",
-      );
+      // Formateamos el error si viene detallado
+      String errorMessage = resData['message'] ?? 'Error desconocido';
+      if (resData['values'] != null && resData['values'] is Map) {
+         final errors = resData['values'] as Map<String, dynamic>;
+         errorMessage = errors.entries.map((e) => '${e.key}: ${e.value is List ? e.value.join(', ') : e.value}').join('\n');
+      }
+      return {'success': false, 'message': errorMessage};
     }
+  } catch (e) {
+    return {'success': false, 'message': 'Error de conexión: $e'};
   }
+}
 }

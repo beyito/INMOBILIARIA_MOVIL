@@ -234,7 +234,21 @@ class _HomePageState extends State<HomePage> {
               label: 'Más',
             ),
           );
-          viewRoutes.add(const Center(child: Text('MÁS')));
+          // Reemplaza la línea de arriba con este bloque
+          viewRoutes.add(
+            ListView( // Usamos una lista para poder añadir más opciones en el futuro
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.show_chart),
+                  title: const Text('Mi Desempeño'),
+                  onTap: () {
+                    // Esto le dice a GoRouter que navegue a la ruta que creamos
+                    context.go('/desempeno'); 
+                  },
+                ),
+              ],
+            ),
+          );
           rutas.add('/home/6');
 
           // Ajustar índice actual si pageIndex fuera mayor al máximo

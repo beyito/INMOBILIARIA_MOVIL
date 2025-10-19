@@ -90,7 +90,7 @@ class InmuebleModel {
   });
 
   factory InmuebleModel.fromJson(Map<String, dynamic> json) => InmuebleModel(
-    id: json['id'],
+    id: json['id'] ?? 0,
     fotos:
         (json['fotos'] as List?)?.map((f) => FotoModel.fromJson(f)).toList() ??
         [],
@@ -101,15 +101,15 @@ class InmuebleModel {
     ciudad: json['ciudad'],
     zona: json['zona'],
     superficie: json['superficie'],
-    dormitorios: json['dormitorios'],
-    banos: json['baños'],
+    dormitorios: json['dormitorios'] ?? 0,
+    banos: json['baños'] ?? 0,
     precio: json['precio'],
     tipoOperacion: json['tipo_operacion'],
     estado: json['estado'],
     latitud: double.parse(json['latitud']),
     longitud: double.parse(json['longitud']),
     isActive: json['is_active'],
-    agente: json['agente'],
-    cliente: json['cliente'],
+    agente: json['agente'] ?? 0,
+    cliente: json['cliente'] ?? 0,
   );
 }
