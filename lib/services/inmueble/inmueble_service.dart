@@ -68,7 +68,7 @@ class InmuebleService {
       },
       body: json.encode(payload),
     );
-    if (response.statusCode != 201) throw Exception('Error al crear el tipo');
+    if (response.statusCode != 200) throw Exception('Error al crear el tipo');
   }
 
   /// Actualiza un tipo de inmueble existente.
@@ -98,15 +98,56 @@ class InmuebleService {
   }
 
   /// Activa un tipo de inmueble previamente desactivado.
-  Future<void> activarTipo(int id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token') ?? '';
+ // No necesitas importar nada especial para print()
 
-    final response = await http.patch(Uri.parse('$baseUrl/activar_tipo_inmueble/$id'),
-      headers: {'Authorization': 'Token $token'},
+Future<void> activarTipo(int id) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token') ?? '';
+
+  final url = Uri.parse('$baseUrl/activar_tipo_inmueble/$id');
+
+  print('▶️ Activando tipo de inmueble...');
+  print('🔗 URL: $url');
+  print('🔑 Token: $token');
+
+  try {
+    final response = await http.patch(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
     );
-    if (response.statusCode != 200) throw Exception('Error al activar');
+
+    print('💬 Status Code: ${response.statusCode}');
+    print('📦 Response Body: ${response.body}');
+
+    // Paso 1: Verificar que la comunicación HTTP fue exitosa
+    if (response.statusCode == 200) {
+      // Paso 2: Decodificar el cuerpo de la respuesta para leer el mensaje de la API
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+      // Paso 3: Verificar si la lógica de la API reportó un error
+      // (Ajusta esta condición según la estructura de tu respuesta JSON de éxito)
+      if (responseData.containsKey('error') && responseData['error'] != 0) {
+        // Si hay un error, lánzalo para que el provider lo sepa
+        throw Exception('Error de la API: ${responseData['message']}');
+      }
+
+      // Si no hay error en la lógica de la API, la operación fue exitosa
+      print('✅ Activado con éxito.');
+
+    } else {
+      // Si el código no es 200, es un error de red o del servidor
+      throw Exception('Error de red. Código: ${response.statusCode}');
+    }
+
+  } catch (e) {
+    print('❌ Ocurrió una excepción: $e');
+    // Re-lanza la excepción para que la capa superior (el provider) pueda manejarla
+    throw Exception('No se pudo activar el tipo de inmueble.');
   }
+}
 
   // --- CÓDIGO ORIGINAL (SIN CAMBIOS) ---
   // (Todo el código que ya tenías)

@@ -1,46 +1,46 @@
-// lib/views/inmueble/tipos_inmueble_view.dart
-
 import 'package:flutter/material.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:provider/provider.dart';
 
-
-
-import '../../widgets/tipo_inmueble_form.dart'; // Crearemos este widget a continuación
-
 import '../../models/tipoinmueble/tipo_inmueble_model.dart';
 import '../../provider/tipo_inmueble_provider.dart';
 import '../../widgets/tipo_inmueble_form.dart';
+
 class TiposInmuebleView extends StatelessWidget {
   const TiposInmuebleView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Envolvemos la vista con el Provider para que toda la pantalla tenga acceso al estado
     return ChangeNotifierProvider(
       create: (_) => TipoInmuebleProvider(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Gestionar Propiedad'),
-          actions: [
-            // El Consumer se reconstruye cuando 'fetchData' notifica cambios
-            Consumer<TipoInmuebleProvider>(
-              builder: (context, provider, child) {
-                return IconButton(
-                  icon: const Icon(LucideIcons.refreshCw),
-                  onPressed: provider.isLoading ? null : () => provider.fetchData(),
-                  tooltip: 'Actualizar listado',
-                );
-              },
+      // El Builder crea un nuevo 'context' que está DEBAJO del Provider.
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Gestionar Tipos de Inmueble'),
+              actions: [
+                // Este Consumer usa el 'context' del Builder, que sí encuentra el Provider.
+                Consumer<TipoInmuebleProvider>(
+                  builder: (context, provider, child) {
+                    return IconButton(
+                      icon: const Icon(LucideIcons.refreshCw),
+                      onPressed: provider.isLoading ? null : () => provider.fetchData(),
+                      tooltip: 'Actualizar listado',
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-        body: const _TiposInmuebleBody(),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _showTipoFormModal(context),
-          label: const Text('Nuevo Tipo'),
-          icon: const Icon(LucideIcons.plus),
-        ),
+            body: const _TiposInmuebleBody(),
+            floatingActionButton: FloatingActionButton.extended(
+              // Este botón ahora también usa el 'context' correcto del Builder.
+              onPressed: () => _showTipoFormModal(context),
+              label: const Text('Nuevo Tipo'),
+              icon: const Icon(LucideIcons.plus),
+            ),
+          );
+        }
       ),
     );
   }
@@ -51,7 +51,6 @@ class _TiposInmuebleBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Usamos 'context.watch' como un atajo para Consumer
     final provider = context.watch<TipoInmuebleProvider>();
 
     return RefreshIndicator(
@@ -74,14 +73,12 @@ class _TiposInmuebleBody extends StatelessWidget {
           else if (provider.tipos.isEmpty)
             const _EmptyState()
           else
-            _TiposTable(),
+            const _TiposTable(),
         ],
       ),
     );
   }
 }
-
-// Aquí creamos los componentes más pequeños para organizar el código
 
 class _StatCards extends StatelessWidget {
   @override
@@ -120,11 +117,13 @@ class _SearchBar extends StatelessWidget {
 }
 
 class _TiposTable extends StatelessWidget {
+  const _TiposTable();
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TipoInmuebleProvider>();
     return Card(
-      clipBehavior: Clip.antiAlias, // Para que el borde redondeado se aplique al contenido
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           for (final tipo in provider.tipos)
@@ -186,7 +185,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// Widget genérico para las tarjetas de estadísticas
 class StatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -214,13 +212,11 @@ class StatCard extends StatelessWidget {
   }
 }
 
-// Función helper para mostrar el modal del formulario
 void _showTipoFormModal(BuildContext context, {TipoInmueble? tipo}) {
   showModalBottomSheet(
     context: context,
-    isScrollControlled: true, // Permite que el modal se ajuste al teclado
+    isScrollControlled: true,
     builder: (ctx) {
-      // Pasamos el provider existente al formulario para que pueda llamar a las funciones
       return ChangeNotifierProvider.value(
         value: context.read<TipoInmuebleProvider>(),
         child: TipoInmuebleForm(initial: tipo),
@@ -229,7 +225,6 @@ void _showTipoFormModal(BuildContext context, {TipoInmueble? tipo}) {
   );
 }
 
-// Función helper para diálogos de confirmación
 void _confirmAndExecute(BuildContext context, String title, Future<void> Function() action) {
   showDialog(
     context: context,
