@@ -15,6 +15,7 @@ import '../views/inmueble/registrar_inmueble_view.dart';
 import '../views/inmueble/mis_inmuebles_view.dart';
 import '../views/contrato/contrato_view.dart';
 import 'package:movil_inmobiliaria/views/cita/agenda_view.dart';
+import 'package:movil_inmobiliaria/views/inmueble/tipos_inmueble_view.dart';
 
 // Instancia global del plugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -258,6 +259,15 @@ class _HomePageState extends State<HomePage> {
                     context.go('/desempeno'); 
                   },
                 ),
+                if (privilegios.any((p) => p.componente == 'tipoinmueble' && p.puedeLeer))
+                  ListTile(
+                    leading: const Icon(Icons.category_outlined), // Ícono sugerido
+                    title: const Text('Gestionar Tipos de Inmueble'),
+                    onTap: () {
+                      // Esto le dice a GoRouter que navegue a la ruta que creamos
+                      context.go('/tipos-inmueble'); 
+                    },
+                  ),
               ],
             ),
           );
