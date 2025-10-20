@@ -4,6 +4,7 @@ import 'provider/chat_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -36,6 +37,15 @@ class MyApp extends StatelessWidget {
       title: 'Inmobiliaria',
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es', 'ES'), // Español
+        Locale('en', 'US'), // Inglés (como respaldo)
+      ],
     );
   }
 }

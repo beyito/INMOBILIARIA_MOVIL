@@ -14,6 +14,8 @@ import '../views/contacto/chat_list_view.dart';
 import '../views/inmueble/registrar_inmueble_view.dart';
 import '../views/inmueble/mis_inmuebles_view.dart';
 import '../views/contrato/contrato_view.dart';
+import 'package:movil_inmobiliaria/views/cita/agenda_view.dart';
+import 'package:movil_inmobiliaria/views/inmueble/tipos_inmueble_view.dart';
 
 // Instancia global del plugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -226,6 +228,17 @@ class _HomePageState extends State<HomePage> {
             viewRoutes.add(ContratoView());
             rutas.add('/home/7');
           }
+          // 🔹 Agenda (si tiene privilegio 'cita' leer)
+          if (privilegios.any((p) => p.componente == 'cita' && p.puedeLeer)) {
+            items.add(
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_month_outlined),
+                label: 'Agenda',
+              ),
+            );
+            viewRoutes.add(const AgendaView());
+            rutas.add('/home/8');
+          }
 
           // 🔹 Más (sin restricción)
           items.add(
@@ -234,7 +247,30 @@ class _HomePageState extends State<HomePage> {
               label: 'Más',
             ),
           );
-          viewRoutes.add(const Center(child: Text('MÁS')));
+          // Reemplaza la línea de arriba con este bloque
+          viewRoutes.add(
+            ListView( // Usamos una lista para poder añadir más opciones en el futuro
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.show_chart),
+                  title: const Text('Mi Desempeño'),
+                  onTap: () {
+                    // Esto le dice a GoRouter que navegue a la ruta que creamos
+                    context.go('/desempeno'); 
+                  },
+                ),
+                if (privilegios.any((p) => p.componente == 'tipoinmueble' && p.puedeLeer))
+                  ListTile(
+                    leading: const Icon(Icons.category_outlined), // Ícono sugerido
+                    title: const Text('Gestionar Tipos de Inmueble'),
+                    onTap: () {
+                      // Esto le dice a GoRouter que navegue a la ruta que creamos
+                      context.go('/tipos-inmueble'); 
+                    },
+                  ),
+              ],
+            ),
+          );
           rutas.add('/home/6');
 
           // Ajustar índice actual si pageIndex fuera mayor al máximo

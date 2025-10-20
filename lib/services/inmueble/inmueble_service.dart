@@ -1,14 +1,14 @@
 // services/inmueble_service.dart
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../../models/inmueble/inmueble_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:movil_inmobiliaria/config/config.dart';
-import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// services/inmueble_service.dart - AGREGAR estas clases y métodos
-
+import '../../models/inmueble/inmueble_model.dart';
+// 🔹 Importamos el nuevo modelo que creamos
+import '../../models/tipoinmueble/tipo_inmueble_model.dart';
 class ProgresoSubida {
   final int total;
   final int completadas;
@@ -25,17 +25,21 @@ class ProgresoSubida {
 
 class InmuebleService {
   final String baseUrl = '${Config.baseUrl}/inmueble';
-  final String baseUrlContacto =
-      '${Config.baseUrl}/contacto'; // Cambia por tu URL real
-  final String cloudName = 'dlawwnr7o'; // 👈 pon tu cloud name
-  final String uploadPreset = 'inmobiliaria_preset'; // 👈 tu preset unsigned
+  // URL específica para el CRUD de tipos de inmueble
 
-  Future<List<InmuebleModel>> listarDisponibles() async {
+  final String baseUrlContacto = '${Config.baseUrl}/contacto';
+  final String cloudName = 'dlawwnr7o';
+  final String uploadPreset = 'inmobiliaria_preset';
+
+  // --- GESTIÓN DE TIPOS DE INMUEBLE (NUEVO) ---
+  // (Funcionalidad que creamos a partir de tu código de React)
+
+  /// Lista todos los tipos de inmueble. Devuelve una lista fuertemente tipada.
+  Future<List<TipoInmueble>> listarTipos() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/listar_anuncios_disponibles'),
+    final response = await http.get(Uri.parse('$baseUrl/listar_tipo_inmuebles'),
       headers: {
         'Authorization': 'Token $token',
         'Content-Type': 'application/json',
@@ -44,13 +48,152 @@ class InmuebleService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      final inmueblesJson = data['values']['inmueble'] as List;
-      return inmueblesJson.map((i) => InmuebleModel.fromJson(i)).toList();
+      // Asegúrate que la ruta en el JSON sea la correcta ('values.tipo_inmueble')
+      final tiposJson = data['values']['tipo_inmueble'] as List;
+      return tiposJson.map((json) => TipoInmueble.fromJson(json)).toList();
     } else {
-      throw Exception('Error al cargar los inmuebles');
+      throw Exception('Error al cargar los tipos de inmueble');
     }
   }
 
+  /// Crea un nuevo tipo de inmueble.
+  Future<void> crearTipo(Map<String, dynamic> payload) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.post(Uri.parse('$baseUrl/crear_tipo_inmueble'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json'
+      },
+      body: json.encode(payload),
+    );
+    if (response.statusCode != 200) throw Exception('Error al crear el tipo');
+  }
+
+  /// Actualiza un tipo de inmueble existente.
+  Future<void> actualizarTipo(int id, Map<String, dynamic> payload) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.patch(Uri.parse('$baseUrl/actualizar_tipo_inmueble/$id'),
+      headers: {
+        'Authorization': 'Token $token',
+        'Content-Type': 'application/json'
+      },
+      body: json.encode(payload),
+    );
+    if (response.statusCode != 200) throw Exception('Error al actualizar');
+  }
+
+  /// Desactiva (eliminado lógico) un tipo de inmueble.
+  Future<void> eliminarTipo(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.delete(Uri.parse('$baseUrl/eliminar_tipo_inmueble/$id'),
+      headers: {'Authorization': 'Token $token'},
+    );
+    if (response.statusCode != 200) throw Exception('Error al desactivar');
+  }
+
+  /// Activa un tipo de inmueble previamente desactivado.
+ // No necesitas importar nada especial para print()
+
+Future<void> activarTipo(int id) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token') ?? '';
+
+  final url = Uri.parse('$baseUrl/activar_tipo_inmueble/$id');
+
+  print('▶️ Activando tipo de inmueble...');
+  print('🔗 URL: $url');
+  print('🔑 Token: $token');
+
+  try {
+    final response = await http.patch(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+
+    print('💬 Status Code: ${response.statusCode}');
+    print('📦 Response Body: ${response.body}');
+
+    // Paso 1: Verificar que la comunicación HTTP fue exitosa
+    if (response.statusCode == 200) {
+      // Paso 2: Decodificar el cuerpo de la respuesta para leer el mensaje de la API
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+      // Paso 3: Verificar si la lógica de la API reportó un error
+      // (Ajusta esta condición según la estructura de tu respuesta JSON de éxito)
+      if (responseData.containsKey('error') && responseData['error'] != 0) {
+        // Si hay un error, lánzalo para que el provider lo sepa
+        throw Exception('Error de la API: ${responseData['message']}');
+      }
+
+      // Si no hay error en la lógica de la API, la operación fue exitosa
+      print('✅ Activado con éxito.');
+
+    } else {
+      // Si el código no es 200, es un error de red o del servidor
+      throw Exception('Error de red. Código: ${response.statusCode}');
+    }
+
+  } catch (e) {
+    print('❌ Ocurrió una excepción: $e');
+    // Re-lanza la excepción para que la capa superior (el provider) pueda manejarla
+    throw Exception('No se pudo activar el tipo de inmueble.');
+  }
+}
+
+  // --- CÓDIGO ORIGINAL (SIN CAMBIOS) ---
+  // (Todo el código que ya tenías)
+
+  // Reemplaza tu función listarDisponibles con esta
+  // Reemplaza de nuevo la función con esta versión final de diagnóstico
+ Future<List<InmuebleModel>> listarDisponibles() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token') ?? '';
+
+  final uri = Uri.parse('$baseUrl/listar_anuncios_disponibles');
+  final headers = <String, String>{
+    'Content-Type': 'application/json',
+    if (token.isNotEmpty) 'Authorization': 'Token $token', // <- SOLO si hay token
+  };
+
+  final resp = await http.get(uri, headers: headers);
+
+  if (resp.statusCode != 200) {
+    throw Exception('Error al cargar: ${resp.statusCode} - ${resp.body}');
+  }
+
+  final data = jsonDecode(resp.body);
+
+  // rutas posibles comunes en tu backend:
+  // 1) values.inmueble = [ {...inmueble...} ]
+  // 2) values.anuncios = [ { anuncio: {...}, inmueble: {...} } ]
+  final values = data['values'];
+  if (values == null) throw Exception('Respuesta sin "values": ${resp.body}');
+
+  final list = (values['inmueble'] ?? values['inmuebles'] ?? values['anuncios']) as List?;
+  if (list == null) throw Exception('No se encontró lista de inmuebles/anuncios en: ${resp.body}');
+
+  final result = <InmuebleModel>[];
+  for (final item in list) {
+    try {
+      // Si viene como anuncio con inmueble anidado
+      final raw = (item is Map && item.containsKey('inmueble')) ? item['inmueble'] : item;
+      result.add(InmuebleModel.fromJson(raw as Map<String, dynamic>));
+    } catch (e) {
+      // logea pero no rompas todo por un item malo
+      debugPrint('❌ Item inválido en listarDisponibles: $e\n$item');
+    }
+  }
+  return result;
+}
   // 🔹 Obtener lista de clientes desde chats
   Future<List<Map<String, dynamic>>> obtenerClientesChat() async {
     final prefs = await SharedPreferences.getInstance();
@@ -262,9 +405,6 @@ class InmuebleService {
   }
 
   // APARTADO DE MIS INMUEBLES
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  ///
-  // services/inmueble/mis_inmuebles_service.dart
   Future<List<InmuebleModel>> obtenerMisInmuebles({String? estado}) async {
     print('🔹 Filtrando inmuebles por estado: $estado');
     final prefs = await SharedPreferences.getInstance();
@@ -331,8 +471,7 @@ class InmuebleService {
       rethrow;
     }
   }
-
-  // services/inmueble/inmueble_service.dart
+  
 
   // 🔹 PUBLICAR INMUEBLE - Siempre crea anuncio con estado 'disponible' y active=true
   Future<bool> publicarInmueble(int inmuebleId) async {
@@ -457,7 +596,6 @@ class InmuebleService {
   }
 
   // 🔹 MÉTODO PRIVADO: Obtener ID del anuncio desde el inmueble
-  // 🔹 MÉTODO PRIVADO: Obtener ID del anuncio desde el inmueble
   Future<int?> _obtenerAnuncioIdDeInmueble(int inmuebleId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
@@ -478,9 +616,6 @@ class InmuebleService {
           return body['values']['id'];
         }
       }
-
-      // Opción 2: Si no hay endpoint específico, podrías obtenerlo de la lista de mis inmuebles
-      // Los inmuebles publicados ya deberían tener información del anuncio
       return null;
     } catch (e) {
       return null;
@@ -492,7 +627,6 @@ class InmuebleService {
     final token = prefs.getString('token') ?? '';
 
     try {
-      // Opción 1: Si tienes un endpoint específico
       final response = await http.get(
         Uri.parse('$baseUrl/anuncio/$inmuebleId/estado_anuncio_id_inmueble/'),
         headers: {
@@ -508,7 +642,7 @@ class InmuebleService {
             body['values']['tiene_anuncio'] == true &&
             body['values']['anuncio']['is_active'] == false) {
           print("El anuncio está eliminado");
-          return "eliminado"; // Valor por defecto si no hay anuncio
+          return "eliminado";
         }
         if (body['status'] == 1 &&
             body['values'] != null &&
@@ -518,9 +652,6 @@ class InmuebleService {
           return body['values']['anuncio']['estado'];
         }
       }
-
-      // Opción 2: Si no hay endpoint específico, podrías obtenerlo de la lista de mis inmuebles
-      // Los inmuebles publicados ya deberían tener información del anuncio
       return "";
     } catch (e) {
       return "";
@@ -599,9 +730,6 @@ class InmuebleService {
 
   // 🔹 Determinar si un inmueble está publicado
   bool estaPublicado(InmuebleModel inmueble) {
-    // Según tu lógica del backend, los publicados tienen estado 'aprobado'
-    // y un anuncio activo con estado 'disponible'
-    // Esto lo determinaremos por el filtro que uses
     return false; // Se determinará por contexto
   }
 
