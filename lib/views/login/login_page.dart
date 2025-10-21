@@ -9,6 +9,7 @@ import 'package:intl/intl.dart'; // Necesario para formatear la fecha
 import '../../models/usuario/usuario_model.dart';
 import '../../provider/chat_provider.dart';
 import '../../services/auth_service.dart';
+import '../../config/config.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -102,12 +103,15 @@ class _LoginPageState extends State<LoginPage> {
       final token = await prefs.getString('token');
       final usuarioData = result['usuario'];
 
-      if (usuarioData != null && token != null) {
+      if (usuarioData != null && token != null && mounted) {
         final usuario = UsuarioModel.fromJson(usuarioData);
-        chatProvider.setUser(usuario, 'ws://192.168.100.12:8000/ws/user/${usuario.id}/?token=$token'); // Reemplaza con tu URL real
-        chatProvider.loadChats();
+
+        // ✨ ¡Así queda perfecto!
+        final String wsUrl = '${Config.wsBaseUrl}/user/${usuario.id}/?token=$token';
+
+        await context.read<ChatProvider>().initializeUser(usuario, wsUrl);
+        context.go('/home/0');
       }
-      context.go('/home/0');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['error'] ?? 'Ocurrió un error.'), backgroundColor: Colors.red),

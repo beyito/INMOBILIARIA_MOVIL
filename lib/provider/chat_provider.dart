@@ -235,6 +235,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> initializeUser(UsuarioModel user, String wsUrl) async {
+    print("✅ ChatProvider inicializado con usuario: ${user.id} - ${user.nombre}");
     currentUser = user;
     this.wsUrl = wsUrl;
     await _initializeChats();
@@ -252,58 +253,69 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _connectWebSocket() {
-    if (wsUrl == null || currentUser == null) return;
-
-    try {
-      // ⚡ SOLUCIÓN MÁS SEGURA: Construir la URL correctamente
-      String baseUrl = wsUrl!;
-
-      // Si la URL base ya incluye el path completo, usar directamente
-      // Si no, construirla
-      String finalUrl;
-      if (baseUrl.contains('/ws/')) {
-        // Ya es una URL completa de WebSocket
-        finalUrl = baseUrl.replaceFirst('http://', 'ws://');
-      } else {
-        // Construir la URL
-        if (baseUrl.endsWith('/')) {
-          baseUrl = baseUrl.substring(0, baseUrl.length - 1);
-        }
-        finalUrl = baseUrl.replaceFirst('http://', 'ws://');
-        finalUrl =
-            '$finalUrl/ws/user/${currentUser!.id}/?token=${prefs.getString('token')}';
-      }
-
-      print("🔗 Conectando a WebSocket: $finalUrl");
-
-      _channel = WebSocketChannel.connect(Uri.parse(finalUrl));
-
-      _channel!.stream.listen(
-        (event) {
-          print("[WS] Mensaje recibido: $event");
-          final Map<String, dynamic> msg = jsonDecode(event);
-          _handleIncomingMessage(msg);
-        },
-        onError: (err) {
-          print("WS error: $err");
-          connected = false;
-          notifyListeners();
-        },
-        onDone: () {
-          print("WS cerrado");
-          connected = false;
-          notifyListeners();
-        },
-      );
-
-      connected = true;
-      notifyListeners();
-    } catch (e) {
-      print("❌ Error conectando WebSocket: $e");
-      connected = false;
-      notifyListeners();
-    }
+  // 1. Si ya estamos conectados, no hacemos nada para evitar duplicados.
+  if (_channel != null && connected) {
+    print("♻️ WebSocket ya está conectado.");
+    return;
   }
+
+  // 2. Si faltan datos esenciales, cancelamos la conexión.
+  if (wsUrl == null || currentUser == null) {
+    print("❌ No se puede conectar a WS, falta URL o usuario.");
+    return;
+  }
+
+  print("🔌 Intentando conectar a WebSocket...");
+  try {
+    // Tu código para construir la URL ya estaba bien, lo dejamos igual.
+    String finalUrl;
+    if (wsUrl!.contains('/ws/')) {
+      finalUrl = wsUrl!.replaceFirst('http://', 'ws://');
+    } else {
+      String baseUrl = wsUrl!.replaceFirst('http://', 'ws://');
+      if (baseUrl.endsWith('/')) {
+        baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+      }
+      finalUrl = '$baseUrl/ws/user/${currentUser!.id}/?token=${prefs.getString('token')}';
+    }
+
+    print("🔗 Conectando a WebSocket: $finalUrl");
+    _channel = WebSocketChannel.connect(Uri.parse(finalUrl));
+
+    // 3. Nos ponemos a escuchar mensajes.
+    _channel!.stream.listen(
+      (event) {
+        print("[WS] Mensaje recibido: $event");
+        final Map<String, dynamic> data = jsonDecode(event);
+        // La lógica para leer el "payload" que hicimos antes sigue aquí.
+        if (data.containsKey('payload')) {
+          final Map<String, dynamic> msg = data['payload'];
+          _handleIncomingMessage(msg);
+        }
+      },
+      onError: (err) {
+        print("WS error: $err");
+        connected = false;
+        notifyListeners();
+      },
+      onDone: () {
+        print("WS cerrado");
+        connected = false;
+        notifyListeners();
+      },
+    );
+
+    // 4. Marcamos la conexión como exitosa.
+    connected = true;
+    notifyListeners();
+    print("✅ WebSocket conectado exitosamente.");
+
+  } catch (e) {
+    print("❌ Error conectando WebSocket: $e");
+    connected = false;
+    notifyListeners();
+  }
+}
 
   void _handleIncomingMessage(Map<String, dynamic> msg) {
     try {
@@ -345,41 +357,50 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void enviarMensaje(int chatId, String texto) {
-    if (_channel == null || currentUser == null) return;
-
-    try {
-      // ⚡ ENVIAR TODOS LOS CAMPOS NECESARIOS
-      final mensajeParaEnviar = {
-        'chat_id': chatId,
-        'mensaje': texto,
-        'usuario_id': currentUser!.id, // ⬅️ IMPORTANTE
-        'usuario_nombre': currentUser!.nombre, // ⬅️ IMPORTANTE
-        'fecha_envio': DateTime.now().toIso8601String(),
-      };
-
-      _channel!.sink.add(jsonEncode(mensajeParaEnviar));
-      print("📤 Mensaje enviado COMPLETO: $mensajeParaEnviar");
-
-      // Agregar localmente con ID temporal
-      final mensajeLocal = MensajeModel(
-        id: -DateTime.now().millisecondsSinceEpoch, // ID negativo temporal
-        chatId: chatId,
-        mensaje: texto,
-        fechaEnvio: DateTime.now().toIso8601String(),
-        leido: true, // Mensaje propio es leído
-        usuario: currentUser!,
-      );
-
-      final chatIndex = chats.indexWhere((c) => c.id == chatId);
-      if (chatIndex != -1) {
-        chats[chatIndex].mensajes.add(mensajeLocal);
-        notifyListeners();
-        print("✅ Mensaje local agregado al chat $chatId");
-      }
-    } catch (e) {
-      print("❌ Error enviando mensaje: $e");
-    }
+  // 1. Verificamos si la conexión está caída.
+  if (_channel == null || !connected) {
+    print("🔌 Conexión WS perdida. Intentando reconectar...");
+    // Si no hay conexión, intentamos reconectar y detenemos el envío por ahora.
+    // El usuario puede reintentar enviar el mensaje en un segundo.
+    _connectWebSocket(); 
+    return;
   }
+
+  // 2. Si la conexión está activa, procedemos a enviar el mensaje.
+  try {
+    if (currentUser == null) return;
+
+    final mensajeParaEnviar = {
+      'chat_id': chatId,
+      'mensaje': texto,
+      'usuario_id': currentUser!.id,
+      'usuario_nombre': currentUser!.nombre,
+      'fecha_envio': DateTime.now().toIso8601String(),
+    };
+
+    _channel!.sink.add(jsonEncode(mensajeParaEnviar));
+    print("📤 Mensaje enviado COMPLEto: $mensajeParaEnviar");
+
+    // Lógica para agregar el mensaje localmente al instante (UI Optimista)
+    final mensajeLocal = MensajeModel(
+      id: -DateTime.now().millisecondsSinceEpoch,
+      chatId: chatId,
+      mensaje: texto,
+      fechaEnvio: DateTime.now().toIso8601String(),
+      leido: true,
+      usuario: currentUser!,
+    );
+
+    final chatIndex = chats.indexWhere((c) => c.id == chatId);
+    if (chatIndex != -1) {
+      chats[chatIndex].mensajes.add(mensajeLocal);
+      notifyListeners();
+      print("✅ Mensaje local agregado al chat $chatId");
+    }
+  } catch (e) {
+    print("❌ Error enviando mensaje: $e");
+  }
+}
 
   Future<void> loadChats() async {
     if (currentUser == null) {

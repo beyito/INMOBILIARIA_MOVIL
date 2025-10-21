@@ -194,6 +194,58 @@ Future<void> activarTipo(int id) async {
   }
   return result;
 }
+  Future<List<Map<String, dynamic>>> obtenerAgentes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token") ?? "";
+
+    final response = await http.get(
+      Uri.parse("${Config.baseUrl}/usuario/listar-agentes"),
+      headers: {"Authorization": "Token $token"},
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = json.decode(utf8.decode(response.bodyBytes));
+      final List<dynamic>? data = responseData['values'];
+      
+      if (data == null) {
+        throw Exception('La respuesta de la API de agentes no tiene el formato esperado (values).');
+      }
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Error al obtener la lista de agentes: ${response.statusCode}');
+    }
+  }
+
+  /// Obtiene la lista de todos los CLIENTES.
+  /// Llama a la lista de todos los usuarios y la filtra para quedarse solo con el grupo 'cliente'.
+  Future<List<Map<String, dynamic>>> obtenerClientes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token") ?? "";
+
+    final response = await http.get(
+      Uri.parse("${Config.baseUrl}/usuario/listar_usuarios"), // <-- Ruta para TODOS los usuarios
+      headers: {"Authorization": "Token $token"},
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = json.decode(utf8.decode(response.bodyBytes));
+      final List<dynamic>? data = responseData['values']?['usuarios'];
+
+      if (data == null) {
+        throw Exception('La respuesta de la API de usuarios no tiene el formato esperado (values.usuarios).');
+      }
+      
+      // Filtramos la lista para quedarnos solo con los que son del grupo "cliente"
+      final clientes = data.where((usuario) {
+        final grupo = usuario['grupo_nombre']?.toString().toLowerCase() ?? '';
+        return grupo == 'cliente';
+      }).toList();
+
+      return clientes.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Error al obtener la lista de clientes: ${response.statusCode}');
+    }
+  }
   // 🔹 Obtener lista de clientes desde chats
   Future<List<Map<String, dynamic>>> obtenerClientesChat() async {
     final prefs = await SharedPreferences.getInstance();
