@@ -6,33 +6,49 @@ import '../../models/desempeno/desempeno_model.dart';
 import 'package:movil_inmobiliaria/config/config.dart';
 
 class DesempenoService {
+
   Future<DesempenoModel> getDesempenoAgente(int agenteId) async {
-    // ... tu función existente no cambia ...
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
     final url = Uri.parse('${Config.baseUrl}/api/desempeno/anuncios/agente/$agenteId/');
-    final response = await http.get(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Token $token',
-      },
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return DesempenoModel.fromJson(data);
-    } else {
-      throw Exception('Error al cargar el reporte de desempeño');
+    
+    print("▶️ Realizando petición GET a: $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+        },
+      );
+
+      // --- LÍNEA DE DEPURACIÓN MÁS IMPORTANTE ---
+      print("StatusCode: ${response.statusCode}");
+      print("✅ Respuesta CRUDA de la API: ${response.body}");
+      // -----------------------------------------
+
+      if (response.statusCode == 200) {
+        // Usamos utf8.decode para manejar correctamente tildes y caracteres especiales
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return DesempenoModel.fromJson(data);
+      } else {
+        print("❌ La API respondió con un error. Body: ${response.body}");
+        throw Exception('Error al cargar el reporte de desempeño. Código: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("❌ Error CATASTRÓFICO en el servicio: $e");
+      // Re-lanza el error para que la UI sepa que algo falló
+      throw Exception('Fallo en la llamada de red: $e');
     }
   }
 
-  // V--- AÑADE ESTA NUEVA FUNCIÓN ---V
+  // V--- TU FUNCIÓN DE IA NO CAMBIA ---V
   Future<String> getReporteIA(DesempenoModel desempenoData) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
     final url = Uri.parse('${Config.baseUrl}/api/desempeno/reporte_ia_gemini/');
 
-    // Construimos el payload tal como lo hace el frontend web
     final payload = {
       "kpis": {
         "publicaciones": desempenoData.totales.publicaciones,
@@ -58,8 +74,7 @@ class DesempenoService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      // Replicamos la lógica web para encontrar el texto del reporte
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
       final texto = data['reporte'] ??
           data['reporte_ia'] ??
           data['values']?['reporte'] ??

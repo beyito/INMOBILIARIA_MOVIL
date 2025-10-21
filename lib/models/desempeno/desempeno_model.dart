@@ -58,6 +58,14 @@ class EstadosModel {
         alquilado: EstadoDetalleModel.fromJson(json['alquilado'] ?? {}),
         otros: EstadoDetalleModel.fromJson(json['otros'] ?? {}),
       );
+
+  // ✅ MÉTODO AÑADIDO
+  Map<String, dynamic> toJson() => {
+        'vendido': vendido.toJson(),
+        'anticretico': anticretico.toJson(),
+        'alquilado': alquilado.toJson(),
+        'otros': otros.toJson(),
+      };
 }
 
 class EstadoDetalleModel {
@@ -71,6 +79,12 @@ class EstadoDetalleModel {
         count: json['count'] ?? 0,
         pct: (json['pct'] ?? 0.0).toDouble(),
       );
+
+  // ✅ MÉTODO AÑADIDO
+  Map<String, dynamic> toJson() => {
+        'count': count,
+        'pct': pct,
+      };
 }
 
 class KpisModel {

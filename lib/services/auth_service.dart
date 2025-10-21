@@ -33,6 +33,7 @@ class AuthService {
       if (usuarioData != null && usuarioData['id'] != null) {
         await prefs.setInt('id', usuarioData['id']);
         await prefs.setString('userName', usuarioData['nombre'] ?? '');
+        await prefs.setString('user_profile', jsonEncode(usuarioData));
       }
       
       // <-- CAMBIO CLAVE: Devolvemos el usuario junto con el éxito
@@ -80,6 +81,16 @@ class AuthService {
       return {'success': false, 'error': 'No se pudo conectar al servidor.'};
     }
   }
+  Future<Map<String, dynamic>?> getMyProfile() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userString = prefs.getString('user_profile');
+
+  if (userString != null) {
+    // Decodificamos el string JSON de vuelta a un Mapa
+    return json.decode(userString) as Map<String, dynamic>;
+  }
+  return null;
+}
 
   // Logout
   Future<void> logout() async {

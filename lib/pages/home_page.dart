@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:movil_inmobiliaria/config/config.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
+// Vistas
 import 'package:movil_inmobiliaria/views/inmueble/inmueble_view.dart';
 import 'package:movil_inmobiliaria/views/usuario/agente_view.dart';
 import '../shared/custom_appbar.dart';
@@ -16,6 +18,7 @@ import '../views/inmueble/mis_inmuebles_view.dart';
 import '../views/contrato/contrato_view.dart';
 import 'package:movil_inmobiliaria/views/cita/agenda_view.dart';
 import 'package:movil_inmobiliaria/views/inmueble/tipos_inmueble_view.dart';
+
 
 // Instancia global del plugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -36,6 +39,9 @@ class _HomePageState extends State<HomePage> {
   List<Widget> viewRoutes = [];
   List<String> rutas = [];
 
+  // para doble toque al salir
+  DateTime? _lastBack;
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +53,6 @@ class _HomePageState extends State<HomePage> {
   // -------------------------------
   // 🔹 Configurar Firebase Messaging
   // -------------------------------
-  // Pedir permisos en iOS
   Future<void> _setupFirebaseMessaging() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
@@ -64,13 +69,10 @@ class _HomePageState extends State<HomePage> {
 
     // Obtener token FCM
     String? tokenMensaje = await messaging.getToken();
-    print("Token FCM: $tokenMensaje");
-
     // Guardar token en backend
     if (tokenMensaje != null) {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("token") ?? "";
-      print("Token: $token");
       await http.post(
         Uri.parse("${Config.baseUrl}/usuario/registrar-token/"),
         headers: {
@@ -83,10 +85,6 @@ class _HomePageState extends State<HomePage> {
 
     // 🔹 Foreground: mostrar notificación en barra
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print(
-        "📩 Notificación recibida en foreground: ${message.notification?.title}",
-      );
-
       RemoteNotification? notification = message.notification;
       AndroidNotification? android = message.notification?.android;
 
@@ -97,8 +95,8 @@ class _HomePageState extends State<HomePage> {
           notification.body,
           NotificationDetails(
             android: AndroidNotificationDetails(
-              'canal_general', // ID del canal
-              'Canal General', // nombre
+              'canal_general',
+              'Canal General',
               channelDescription: 'Notificaciones generales',
               importance: Importance.max,
               priority: Priority.high,
@@ -110,15 +108,13 @@ class _HomePageState extends State<HomePage> {
 
     // Cuando el usuario abre la notificación
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print("👉 Notificación abierta por el usuario: ${message.data}");
+      // puedes rutear según message.data si quieres
     });
 
     // App abierta desde notificación cerrada
-    FirebaseMessaging.instance.getInitialMessage().then((
-      RemoteMessage? message,
-    ) {
+    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
-        print("🔔 App abierta desde notificación: ${message.data}");
+        // manejar arranque desde notificación
       }
     });
   }
@@ -144,129 +140,103 @@ class _HomePageState extends State<HomePage> {
         // Solo llenar listas si están vacías
         if (items.isEmpty) {
           // 🔹 Inicio (sin restricción)
-          items.add(
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home_max),
-              label: 'Inicio',
-            ),
-          );
+          items.add(const BottomNavigationBarItem(
+            icon: Icon(Icons.home_max),
+            label: 'Inicio',
+          ));
           viewRoutes.add(InmuebleView());
           rutas.add('/home/0');
-          if (privilegios.any(
-            (p) => p.componente == 'inmueble' && p.puedeCrear,
-          )) {
-            items.add(
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.home_max),
-                label: 'Registrar Inmueble',
-              ),
-            );
+
+          // Registrar Inmueble
+          if (privilegios.any((p) => p.componente == 'inmueble' && p.puedeCrear)) {
+            items.add(const BottomNavigationBarItem(
+              icon: Icon(Icons.home_max),
+              label: 'Registrar Inmueble',
+            ));
             viewRoutes.add(RegistrarInmuebleView());
             rutas.add('/home/1');
           }
 
-          // 🔹 Chat (si tiene privilegio)
+          // 🔹 Chat
           if (privilegios.any((p) => p.componente == 'chat' && p.puedeLeer)) {
-            items.add(
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.chat_bubble_outline),
-                label: 'Chat',
-              ),
-            );
+            items.add(const BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              label: 'Chat',
+            ));
             viewRoutes.add(ChatListView());
             rutas.add('/home/2');
           }
-          // 🔹 Agentes (si tiene privilegio)
-          if (privilegios.any(
-            (p) => p.componente == 'usuario' && p.puedeLeer,
-          )) {
-            items.add(
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.people),
-                label: 'Agentes',
-              ),
-            );
+
+          // 🔹 Agentes
+          if (privilegios.any((p) => p.componente == 'usuario' && p.puedeLeer)) {
+            items.add(const BottomNavigationBarItem(
+              icon: Icon(Icons.people),
+              label: 'Agentes',
+            ));
             viewRoutes.add(AgenteView());
             rutas.add('/home/3');
           }
-          // Mis Inmuebles (si tiene privilegio)
-          if (privilegios.any(
-            (p) => p.componente == 'inmueble' && p.puedeLeer,
-          )) {
-            items.add(
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.house_siding),
-                label: 'Mis Inmuebles',
-              ),
-            );
+
+          // 🔹 Mis Inmuebles
+          if (privilegios.any((p) => p.componente == 'inmueble' && p.puedeLeer)) {
+            items.add(const BottomNavigationBarItem(
+              icon: Icon(Icons.house_siding),
+              label: 'Mis Inmuebles',
+            ));
             viewRoutes.add(MisInmueblesView());
             rutas.add('/home/4');
           }
-          // 🔹 Favoritos (si tiene privilegio)
-          if (privilegios.any(
-            (p) => p.componente == 'anuncio' && p.puedeLeer,
-          )) {
-            items.add(
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.favorite_outline),
-                label: 'Favoritos',
-              ),
-            );
+
+          // 🔹 Favoritos
+          if (privilegios.any((p) => p.componente == 'anuncio' && p.puedeLeer)) {
+            items.add(const BottomNavigationBarItem(
+              icon: Icon(Icons.favorite_outline),
+              label: 'Favoritos',
+            ));
             viewRoutes.add(const Center(child: Text('FAVORITOS')));
             rutas.add('/home/5');
           }
-          // 🔹 Contrato (si tiene privilegio)
-          if (privilegios.any(
-            (p) => p.componente == 'contrato' && p.puedeLeer,
-          )) {
-            items.add(
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.receipt_long),
-                label: 'Contratos',
-              ),
-            );
+
+          // 🔹 Contratos
+          if (privilegios.any((p) => p.componente == 'contrato' && p.puedeLeer)) {
+            items.add(const BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long),
+              label: 'Contratos',
+            ));
             viewRoutes.add(ContratoView());
             rutas.add('/home/7');
           }
-          // 🔹 Agenda (si tiene privilegio 'cita' leer)
+
+          // 🔹 Agenda
           if (privilegios.any((p) => p.componente == 'cita' && p.puedeLeer)) {
-            items.add(
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_month_outlined),
-                label: 'Agenda',
-              ),
-            );
+            items.add(const BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month_outlined),
+              label: 'Agenda',
+            ));
             viewRoutes.add(const AgendaView());
             rutas.add('/home/8');
           }
 
           // 🔹 Más (sin restricción)
-          items.add(
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.more_horiz),
-              label: 'Más',
-            ),
-          );
-          // Reemplaza la línea de arriba con este bloque
+          items.add(const BottomNavigationBarItem(
+            icon: Icon(Icons.more_horiz),
+            label: 'Más',
+          ));
+
+          // IMPORTANTE: aquí usamos push para que Atrás vuelva a Home
           viewRoutes.add(
-            ListView( // Usamos una lista para poder añadir más opciones en el futuro
+            ListView(
               children: [
                 ListTile(
                   leading: const Icon(Icons.show_chart),
                   title: const Text('Mi Desempeño'),
-                  onTap: () {
-                    // Esto le dice a GoRouter que navegue a la ruta que creamos
-                    context.go('/desempeno'); 
-                  },
+                  onTap: () => context.push('/desempeno'),
                 ),
-                if (privilegios.any((p) => p.componente == 'tipoinmueble' && p.puedeLeer))
+                if (privilegios.any((p) => p.componente == 'tipoinmueble' && p.puedeCrear))
                   ListTile(
-                    leading: const Icon(Icons.category_outlined), // Ícono sugerido
+                    leading: const Icon(Icons.category_outlined),
                     title: const Text('Gestionar Tipos de Inmueble'),
-                    onTap: () {
-                      // Esto le dice a GoRouter que navegue a la ruta que creamos
-                      context.go('/tipos-inmueble'); 
-                    },
+                    onTap: () => context.push('/tipos-inmueble'),
                   ),
               ],
             ),
@@ -277,22 +247,54 @@ class _HomePageState extends State<HomePage> {
           currentIndex = widget.pageIndex.clamp(0, items.length - 1);
         }
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: const CustomAppbar(),
-          body: IndexedStack(index: currentIndex, children: viewRoutes),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: currentIndex,
-            onTap: (index) {
-              setState(() => currentIndex = index);
-              context.go(rutas[index]);
-            },
-            items: items,
+        // ---------- Manejo del botón "Atrás" ----------
+        return PopScope(
+          canPop: false, // nosotros controlamos el back
+          onPopInvoked: (didPop) async {
+            if (didPop) return;
+
+            // 1) Si hay una subruta encima de Home, hacemos pop
+            if (GoRouter.of(context).canPop()) {
+              context.pop();
+              return;
+            }
+
+            // 2) Si estamos en un tab distinto de Inicio (0), volvemos a Inicio
+            if (currentIndex != 0) {
+              setState(() => currentIndex = 0);
+              context.go('/home/0'); // cambiar de tab no apila historial
+              return;
+            }
+
+            // 3) Estamos en la raíz → doble toque para salir
+            final now = DateTime.now();
+            if (_lastBack == null || now.difference(_lastBack!) > const Duration(seconds: 2)) {
+              _lastBack = now;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Pulsa atrás otra vez para salir')),
+              );
+              return;
+            }
+            // segundo toque dentro de 2s: dejar salir (Android cerrará la app)
+            SystemNavigator.pop();
+          },
+          child: Scaffold(
             backgroundColor: Colors.white,
-            selectedItemColor: Colors.blue,
-            unselectedItemColor: Colors.grey,
-            type: BottomNavigationBarType.fixed,
-            elevation: 8,
+            appBar: const CustomAppbar(),
+            body: IndexedStack(index: currentIndex, children: viewRoutes),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: currentIndex,
+              onTap: (index) {
+                setState(() => currentIndex = index);
+                context.go(rutas[index]); // tabs usan go (no apilan)
+              },
+              items: items,
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.blue,
+              unselectedItemColor: Colors.grey,
+              type: BottomNavigationBarType.fixed,
+              elevation: 8,
+            ),
           ),
         );
       },
