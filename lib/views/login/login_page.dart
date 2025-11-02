@@ -56,68 +56,79 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+  // 1. Validar el formulario
+  if (!_formKey.currentState!.validate()) return;
+  setState(() { _isLoading = true; });
 
-    setState(() { _isLoading = true; });
-
-    Map<String, dynamic> result;
-    if (_isLogin) {
-      result = await _authService.login(
-        _usernameController.text.trim(),
-        _passwordController.text.trim(),
-      );
-    } else {
-      Map<String, dynamic> payload = {
-        "username": _usernameController.text.trim(), "password": _passwordController.text.trim(),
-        "nombre": _nombreController.text.trim(), "correo": _correoController.text.trim(),
-        "ci": _ciController.text.trim(), "telefono": _telefonoController.text.trim(),
-        "grupo_id": _userType == 'cliente' ? 1 : 2,
-      };
-      if (_userType == 'cliente') {
-        payload.addAll({
-          "ubicacion": _ubicacionController.text.trim(),
-          "fecha_nacimiento": _fechaNacimientoController.text.trim(),
-        });
-      } else { 
-        payload.addAll({
-          "numero_licencia": _numeroLicenciaController.text.trim(),
-          "experiencia": int.tryParse(_experienciaController.text.trim()) ?? 0,
-        });
-      }
-      print('PAYLOAD DE REGISTRO ENVIADO: $payload');
-      result = await _authService.register(payload);
+  Map<String, dynamic> result;
+  if (_isLogin) {
+    // 2. Realizar el login
+    result = await _authService.login(
+      _usernameController.text.trim(),
+      _passwordController.text.trim(),
+    );
+  } else {
+    // Lógica de registro (sin cambios)
+    Map<String, dynamic> payload = {
+      "username": _usernameController.text.trim(),
+      "password": _passwordController.text.trim(),
+      "nombre": _nombreController.text.trim(),
+      "correo": _correoController.text.trim(),
+      "ci": _ciController.text.trim(),
+      "telefono": _telefonoController.text.trim(),
+      "grupo_id": _userType == 'cliente' ? 1 : 2,
+    };
+    if (_userType == 'cliente') {
+      payload.addAll({
+        "ubicacion": _ubicacionController.text.trim(),
+        "fecha_nacimiento": _fechaNacimientoController.text.trim(),
+      });
+    } else { 
+      payload.addAll({
+        "numero_licencia": _numeroLicenciaController.text.trim(),
+        "experiencia": int.tryParse(_experienciaController.text.trim()) ?? 0,
+      });
     }
-
-    if (!mounted) return;
-    setState(() { _isLoading = false; });
-
-    if (result['success'] == true) {
-      if (!_isLogin) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Registro exitoso! Iniciando sesión...'), backgroundColor: Colors.green),
-        );
-      }
-      
-      final chatProvider = context.read<ChatProvider>();
-      final prefs = await SharedPreferences.getInstance();
-      final token = await prefs.getString('token');
-      final usuarioData = result['usuario'];
-
-      if (usuarioData != null && token != null && mounted) {
-        final usuario = UsuarioModel.fromJson(usuarioData);
-
-        // ✨ ¡Así queda perfecto!
-        final String wsUrl = '${Config.wsBaseUrl}/user/${usuario.id}/?token=$token';
-
-        await context.read<ChatProvider>().initializeUser(usuario, wsUrl);
-        context.go('/home/0');
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['error'] ?? 'Ocurrió un error.'), backgroundColor: Colors.red),
-      );
-    }
+    result = await _authService.register(payload);
   }
+
+  // Detener la carga y verificar que el widget sigue montado
+  if (!mounted) return;
+  setState(() { _isLoading = false; });
+
+  // 3. Procesar el resultado
+  if (result['success'] == true) {
+    // Obtenemos todo directamente del resultado del login o registro.
+    // Esto asume que tu `AuthService` devuelve 'usuario' y 'token' en caso de éxito.
+    final usuarioData = result['usuario'];
+    final token = result['token']; // ✅ ¡Más directo y seguro!
+
+    // Verificamos que los datos necesarios no sean nulos
+    if (usuarioData != null && token != null && mounted) {
+      final usuario = UsuarioModel.fromJson(usuarioData);
+      
+      // Construimos la URL del WebSocket con los datos frescos
+      final String wsUrl = '${Config.wsBaseUrl}/user/${usuario.id}/?token=$token';
+
+      // Inicializamos el ChatProvider y esperamos a que termine
+      await context.read<ChatProvider>().initializeUser(usuario, wsUrl);
+      
+      // Navegamos a la pantalla principal
+      context.go('/home/0');
+
+    } else {
+      // Manejar el caso improbable de que el login sea exitoso pero no devuelva usuario o token
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error inesperado al procesar los datos del login.'), backgroundColor: Colors.red),
+      );
+    }
+  } else {
+    // Mostrar mensaje de error si el login/registro falló
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['error'] ?? 'Ocurrió un error.'), backgroundColor: Colors.red),
+    );
+  }
+}
 
   void _toggleMode() {
     setState(() {
