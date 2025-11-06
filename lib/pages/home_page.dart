@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
   // 1. Variables de estado para controlar la UI
   bool isLoading = true;
   String? errorMessage;
-  
+
   int currentIndex = 0;
   List<BottomNavigationBarItem> items = [];
   List<Widget> viewRoutes = [];
@@ -59,17 +59,17 @@ class _HomePageState extends State<HomePage> {
       final newItems = <BottomNavigationBarItem>[];
       final newViewRoutes = <Widget>[];
       final newRutas = <String>[];
-      
+
       void agregarRuta(IconData icon, String label, Widget view) {
-          newItems.add(BottomNavigationBarItem(icon: Icon(icon), label: label));
-          newViewRoutes.add(view);
-          newRutas.add('/home/${newItems.length - 1}');
+        newItems.add(BottomNavigationBarItem(icon: Icon(icon), label: label));
+        newViewRoutes.add(view);
+        newRutas.add('/home/${newItems.length - 1}');
       }
 
       // --- Lógica para construir los menús ---
-      
+
       agregarRuta(Icons.home_max, 'Inicio', InmuebleView());
-      
+
       if (privilegios.any((p) => p.componente == 'inmueble' && p.puedeCrear)) {
         agregarRuta(Icons.add_business, 'Registrar', RegistrarInmuebleView());
       }
@@ -83,16 +83,19 @@ class _HomePageState extends State<HomePage> {
         agregarRuta(Icons.house_siding, 'Mis Inmuebles', MisInmueblesView());
       }
       if (privilegios.any((p) => p.componente == 'anuncio' && p.puedeLeer)) {
-        agregarRuta(Icons.favorite_outline, 'Favoritos', const Center(child: Text('FAVORITOS')));
+        agregarRuta(Icons.favorite_outline, 'Favoritos',
+            const Center(child: Text('FAVORITOS')));
       }
       if (privilegios.any((p) => p.componente == 'contrato' && p.puedeLeer)) {
-         agregarRuta(Icons.receipt_long, 'Contratos', ContratoView());
+        agregarRuta(Icons.receipt_long, 'Contratos', ContratoView());
       }
       if (privilegios.any((p) => p.componente == 'cita' && p.puedeLeer)) {
-        agregarRuta(Icons.calendar_month_outlined, 'Agenda', const AgendaView());
+        agregarRuta(
+            Icons.calendar_month_outlined, 'Agenda', const AgendaView());
       }
 
-      newItems.add(const BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'Más'));
+      newItems.add(const BottomNavigationBarItem(
+          icon: Icon(Icons.more_horiz), label: 'Más'));
       newViewRoutes.add(ListView(
         children: [
           ListTile(
@@ -100,7 +103,14 @@ class _HomePageState extends State<HomePage> {
             title: const Text('Mi Desempeño'),
             onTap: () => context.push('/desempeno'),
           ),
-          if (privilegios.any((p) => p.componente == 'tipoinmueble' && p.puedeCrear))
+          if (privilegios.any((p) => p.componente == 'contrato' && p.puedeLeer))
+            ListTile(
+              leading: const Icon(Icons.monetization_on_outlined),
+              title: const Text('Mis Comisiones'),
+              onTap: () => context.push('/comision'),
+            ),
+          if (privilegios
+              .any((p) => p.componente == 'tipoinmueble' && p.puedeCrear))
             ListTile(
               leading: const Icon(Icons.category_outlined),
               title: const Text('Gestionar Tipos de Inmueble'),
@@ -113,13 +123,12 @@ class _HomePageState extends State<HomePage> {
       items = newItems;
       viewRoutes = newViewRoutes;
       rutas = newRutas;
-
     } catch (e) {
       print("🚨🚨🚨 ERROR CAPTURADO EN HOMEPAGE: $e");
-      
+
       if (e.toString().contains('Token inválido') && mounted) {
         context.go('/login');
-        return; 
+        return;
       }
       errorMessage = 'Error al cargar privilegios';
     }
@@ -127,38 +136,43 @@ class _HomePageState extends State<HomePage> {
     if (mounted) {
       setState(() {
         isLoading = false;
-        currentIndex = widget.pageIndex.clamp(0, items.isEmpty ? 0 : items.length - 1);
+        currentIndex =
+            widget.pageIndex.clamp(0, items.isEmpty ? 0 : items.length - 1);
       });
     }
   }
-  
+
   // Tu función de Firebase con manejo de errores
   Future<void> _setupFirebaseMessaging() async {
     try {
       FirebaseMessaging messaging = FirebaseMessaging.instance;
       await messaging.requestPermission();
-      
+
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       final InitializationSettings initializationSettings =
           InitializationSettings(android: initializationSettingsAndroid);
       await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-      
+
       String? tokenMensaje = await messaging.getToken();
-      
+
       if (tokenMensaje != null) {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString("token") ?? "";
         await http.post(
           Uri.parse("${Config.baseUrl}/usuario/registrar-token/"),
-          headers: {"Authorization": "Token $token", "Content-Type": "application/json"},
+          headers: {
+            "Authorization": "Token $token",
+            "Content-Type": "application/json"
+          },
           body: '{"token": "$tokenMensaje", "plataforma": "android"}',
         );
         print("✅ Token FCM registrado en el backend.");
       }
-      
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) { /* ... */ });
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) { /* ... */ });
+
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {/* ... */});
+      FirebaseMessaging.onMessageOpenedApp
+          .listen((RemoteMessage message) {/* ... */});
     } catch (e) {
       print("❌ Error en _setupFirebaseMessaging: $e");
     }
@@ -177,7 +191,8 @@ class _HomePageState extends State<HomePage> {
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            child:
+                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 60),
               const SizedBox(height: 16),
               Text(errorMessage!, textAlign: TextAlign.center),
@@ -197,7 +212,7 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     }
-    
+
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -212,7 +227,8 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         final now = DateTime.now();
-        if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+        if (_lastBackPress == null ||
+            now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
           _lastBackPress = now;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Pulsa atrás otra vez para salir')),

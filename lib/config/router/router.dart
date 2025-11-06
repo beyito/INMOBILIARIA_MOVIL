@@ -12,6 +12,7 @@ import 'package:movil_inmobiliaria/views/usuario/perfil_view.dart';
 import 'package:movil_inmobiliaria/views/contrato/contrato_view.dart';
 import 'package:movil_inmobiliaria/views/desempeno/desempeno_view.dart';
 import 'package:movil_inmobiliaria/views/inmueble/tipos_inmueble_view.dart';
+import 'package:movil_inmobiliaria/views/comisiones/dashboard_comisiones_agente.dart';
 
 // Función para verificar si hay token
 Future<bool> isLoggedIn() async {
@@ -56,12 +57,16 @@ final appRouter = GoRouter(
       builder: (context, state) => const ContratoView(),
     ),
     GoRoute(
-    path: '/desempeno',
-    builder: (context, state) => const DesempenoView(),
+      path: '/desempeno',
+      builder: (context, state) => const DesempenoView(),
     ),
     GoRoute(
       path: '/tipos-inmueble',
       builder: (context, state) => const TiposInmuebleView(),
+    ),
+    GoRoute(
+      path: '/comision',
+      builder: (context, state) => const DashboardComisionesAgente(),
     ),
   ],
   redirect: (context, state) async {

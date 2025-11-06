@@ -27,6 +27,8 @@ class ContratoServicios {
   String direccionOficina;
   String telefonoOficina;
   String emailOficina;
+  int agenteId;
+  int inmuebleId;
 
   ContratoServicios({
     required this.ciudad,
@@ -57,6 +59,8 @@ class ContratoServicios {
     required this.direccionOficina,
     required this.telefonoOficina,
     required this.emailOficina,
+    required this.agenteId,
+    required this.inmuebleId,
   });
 
   Map<String, dynamic> toJson() {
@@ -89,6 +93,8 @@ class ContratoServicios {
       'direccion_oficina': direccionOficina,
       'telefono_oficina': telefonoOficina,
       'email_oficina': emailOficina,
+      'agente_id': agenteId,
+      'inmueble_id': inmuebleId,
     };
   }
 
@@ -123,6 +129,8 @@ class ContratoServicios {
       direccionOficina: json['direccion_oficina'] ?? '',
       telefonoOficina: json['telefono_oficina'] ?? '',
       emailOficina: json['email_oficina'] ?? '',
+      agenteId: json['agente_id'] ?? 0,
+      inmuebleId: json['inmueble_id'] ?? 0,
     );
   }
 }
