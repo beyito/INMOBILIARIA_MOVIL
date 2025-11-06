@@ -65,7 +65,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const TiposInmuebleView(),
     ),
     GoRoute(
-      path: '/comisiones',
+      path: '/comision',
       builder: (context, state) => const DashboardComisionesAgente(),
     ),
   ],

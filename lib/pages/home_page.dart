@@ -103,11 +103,12 @@ class _HomePageState extends State<HomePage> {
             title: const Text('Mi Desempeño'),
             onTap: () => context.push('/desempeno'),
           ),
-          ListTile(
-            leading: const Icon(Icons.monetization_on_outlined),
-            title: const Text('Mis Comisiones'),
-            onTap: () => context.push('/comisiones'),
-          ),
+          if (privilegios.any((p) => p.componente == 'contrato' && p.puedeLeer))
+            ListTile(
+              leading: const Icon(Icons.monetization_on_outlined),
+              title: const Text('Mis Comisiones'),
+              onTap: () => context.push('/comision'),
+            ),
           if (privilegios
               .any((p) => p.componente == 'tipoinmueble' && p.puedeCrear))
             ListTile(
