@@ -100,6 +100,23 @@ class _HomePageState extends State<HomePage> {
             title: const Text('Mi Desempeño'),
             onTap: () => context.push('/desempeno'),
           ),
+
+          ListTile(
+            leading: const Icon(Icons.analytics_outlined), // O LucideIcons.layoutGrid
+            title: const Text('Módulo de Reportes'),
+            onTap: () => context.push('/reportes'),
+          ),
+          ListTile(
+          leading: const Icon(Icons.article_outlined), // o LucideIcons.fileText
+          title: const Text('Gestión Anticrético'),
+          onTap: () => context.push('/contratos-anticretico'),
+        ),
+        ListTile(
+            leading: const Icon(Icons.article_outlined),
+            title: const Text('Gestión Alquiler'),
+            onTap: () => context.push('/contratos-alquiler'),
+          ),
+
           if (privilegios.any((p) => p.componente == 'tipoinmueble' && p.puedeCrear))
             ListTile(
               leading: const Icon(Icons.category_outlined),

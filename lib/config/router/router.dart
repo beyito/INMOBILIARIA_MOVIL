@@ -12,7 +12,13 @@ import 'package:movil_inmobiliaria/views/usuario/perfil_view.dart';
 import 'package:movil_inmobiliaria/views/contrato/contrato_view.dart';
 import 'package:movil_inmobiliaria/views/desempeno/desempeno_view.dart';
 import 'package:movil_inmobiliaria/views/inmueble/tipos_inmueble_view.dart';
-
+import 'package:movil_inmobiliaria/views/reportes/reportes_page.dart';
+import 'package:movil_inmobiliaria/views/contrato_anticretico/contrato_anticretico_list_page.dart';
+import 'package:movil_inmobiliaria/views/contrato_anticretico/contrato_anticretico_detail_page.dart';
+import 'package:movil_inmobiliaria/views/contrato_anticretico/crear_contrato_page.dart';
+import 'package:movil_inmobiliaria/views/contrato_alquiler/contrato_alquiler_list_page.dart';
+import 'package:movil_inmobiliaria/views/contrato_alquiler/contrato_alquiler_form_page.dart';
+import 'package:movil_inmobiliaria/views/contrato_alquiler/contrato_alquiler_detail_page.dart';
 // Función para verificar si hay token
 Future<bool> isLoggedIn() async {
   final prefs = await SharedPreferences.getInstance();
@@ -60,9 +66,45 @@ final appRouter = GoRouter(
     builder: (context, state) => const DesempenoView(),
     ),
     GoRoute(
+      path: '/reportes',
+      builder: (context, state) => const ReportesPage(),
+    ),
+    GoRoute(
       path: '/tipos-inmueble',
       builder: (context, state) => const TiposInmuebleView(),
     ),
+    GoRoute(
+      path: '/contratos-anticretico', // La nueva lista
+      builder: (context, state) => const ContratoAnticreticoListPage(),
+    ),
+    GoRoute(
+      path: '/contrato-anticretico-detalle/:id', // El detalle
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '0';
+        return ContratoAnticreticoDetailPage(contratoId: id);
+      },
+    ),
+    GoRoute(
+      path: '/crear-contrato-anticretico', // El formulario
+      builder: (context, state) => const CrearContratoPage(),
+    ),
+    GoRoute(
+  path: '/contratos-alquiler',
+  builder: (context, state) => const ContratoAlquilerListPage(),
+),
+GoRoute(
+  path: '/contratos-alquiler/nuevo',
+  builder: (context, state) => const ContratoAlquilerFormPage(),
+),
+GoRoute(
+  path: '/contratos-alquiler/:id',
+  builder: (context, state) {
+    final idStr = state.pathParameters['id'] ?? '0';
+    final id = int.tryParse(idStr) ?? 0;
+    return ContratoAlquilerDetailPage(contratoId: id);
+  },
+),
+
   ],
   redirect: (context, state) async {
     final prefs = await SharedPreferences.getInstance();
