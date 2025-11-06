@@ -37,7 +37,8 @@ class AuthService {
       }
       
       // <-- CAMBIO CLAVE: Devolvemos el usuario junto con el éxito
-      return {'success': true, 'usuario': usuarioData}; 
+      // en auth_service.dart
+    return {'success': true, 'usuario': usuarioData, 'token': token};
     } else {
       return {'success': false, 'error': data['message'] ?? 'Error desconocido'};
     }
@@ -93,12 +94,10 @@ class AuthService {
 }
 
   // Logout
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('id');
-    await prefs.remove('userName');
-  }
+ Future<void> logout() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.clear(); // ✅ Borra todo, más seguro para un logout.
+}
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
