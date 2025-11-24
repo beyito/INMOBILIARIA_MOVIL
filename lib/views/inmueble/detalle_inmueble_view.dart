@@ -1,12 +1,12 @@
 // views/detalle_inmueble_view.dart
-// views/detalle_inmueble_view.dart
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:movil_inmobiliaria/models/contacto/chat_model.dart';
 import 'package:movil_inmobiliaria/models/inmueble/inmueble_model.dart';
 import 'package:movil_inmobiliaria/services/contacto/contacto_service.dart';
 import 'package:movil_inmobiliaria/views/contacto/chat_detalle_view.dart';
+
+// IMPORTACIÓN DEL MAPA
+import 'package:movil_inmobiliaria/views/mapainteractivo/mapa_widget.dart';
 
 class DetalleInmuebleView extends StatefulWidget {
   final InmuebleModel inmueble;
@@ -36,7 +36,6 @@ class _DetalleInmuebleViewState extends State<DetalleInmuebleView> {
     setState(() => _contactando = true);
 
     try {
-      // Obtener el ID del agente del inmueble
       final agenteId = widget.inmueble.agente;
 
       if (agenteId == null) {
@@ -44,19 +43,13 @@ class _DetalleInmuebleViewState extends State<DetalleInmuebleView> {
         return;
       }
 
-      // Crear el chat
       final resultado = await _contactoService.crearChat(agenteId);
 
       if (resultado['success'] == true) {
         final data = resultado['data'];
-        bool existente = false;
-        if (data['message'] == 'CHAT YA EXISTENTE ENTRE CLIENTE Y AGENTE') {
-          existente = true;
-        } else {
-          existente = false;
-        }
+        bool existente =
+            data['message'] == 'CHAT YA EXISTENTE ENTRE CLIENTE Y AGENTE';
 
-        // Opcional: Navegar al chat
         _navegarAlChat(ChatModel.fromJson(data['values']), existente);
       } else {
         _mostrarSnackBar(
@@ -74,41 +67,41 @@ class _DetalleInmuebleViewState extends State<DetalleInmuebleView> {
   }
 
   void _navegarAlChat(ChatModel chat, bool existente) {
-    // Aquí puedes navegar a la pantalla de chat
-    // Por ejemplo:
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatDetalleView(chat: chat)),
     );
 
-    // Mientras tanto, mostrar un diálogo informativo
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Chat Creado'),
-        content: !existente
-            ? const Text(
-                'El chat se ha creado exitosamente. Puedes empezar a conversar con el agente.',
-              )
-            : const Text(
-                'Ya tienes un chat con este agente. Puedes continuar la conversación.',
-              ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Aceptar'),
-          ),
-        ],
-      ),
-    );
+    if (!existente) {
+        // Solo mostrar aviso si es nuevo, opcional
+       _mostrarSnackBar('Chat creado exitosamente');
+    }
+  }
+
+  // Helper para parsear coordenadas de forma segura
+  // Asumiendo que en tu modelo pueden ser double, String o null
+  double? _parseCoordenada(dynamic valor) {
+    if (valor == null) return null;
+    if (valor is double) return valor;
+    if (valor is int) return valor.toDouble();
+    if (valor is String) return double.tryParse(valor);
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Obtener coordenadas seguras
+    // Asegúrate de que InmuebleModel tenga los campos latitud y longitud
+    // Si no los tiene, agrégalos a tu modelo.
+    final double? lat = _parseCoordenada(widget.inmueble.latitud);
+    final double? lng = _parseCoordenada(widget.inmueble.longitud);
+    final bool tieneUbicacion = lat != null && lng != null && lat != 0 && lng != 0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.inmueble.titulo),
         backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white, // Para que el texto e icono sean blancos
       ),
       body: ListView(
         children: [
@@ -121,8 +114,15 @@ class _DetalleInmuebleViewState extends State<DetalleInmuebleView> {
                 itemBuilder: (context, index) {
                   final foto = widget.inmueble.fotos?[index];
                   return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(foto?.url ?? '', fit: BoxFit.cover),
+                    // borderRadius: BorderRadius.circular(8), // Quitamos borde para que pegue al borde pantalla
+                    child: Image.network(
+                      foto?.url ?? '', 
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, err, trace) => Container(
+                        color: Colors.grey[300], 
+                        child: const Icon(Icons.broken_image)
+                      ),
+                    ),
                   );
                 },
               ),
@@ -145,9 +145,11 @@ class _DetalleInmuebleViewState extends State<DetalleInmuebleView> {
                 const SizedBox(height: 8),
                 Text(
                   widget.inmueble.descripcion,
-                  style: const TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
-                const SizedBox(height: 12),
+                const Divider(height: 30),
+                
+                // Detalles en filas
                 _infoRow(
                   Icons.location_on,
                   '${widget.inmueble.direccion}, ${widget.inmueble.ciudad}',
@@ -170,53 +172,77 @@ class _DetalleInmuebleViewState extends State<DetalleInmuebleView> {
                   Icons.sell,
                   'Operación: ${widget.inmueble.tipoOperacion}',
                 ),
-
-                const SizedBox(height: 20),
-
-                // Botón de Contactar Agente
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _contactando ? null : _contactarAgente,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: _contactando
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
-                            ),
-                          )
-                        : const Text(
-                            'Contactar Agente',
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 16),
               ],
             ),
           ),
+
+          const SizedBox(height: 20),
+
+          // ----------- SECCIÓN DEL MAPA -----------
+          if (tieneUbicacion) ...[
+            MapaWidget(
+              latitud: lat!,
+              longitud: lng!,
+              altura: 300, // Altura ajustable
+            ),
+            const SizedBox(height: 20),
+          ],
+          // ----------------------------------------
+
+          // Botón de Contactar Agente
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon( // Usar ElevatedButton.icon es más bonito
+                onPressed: _contactando ? null : _contactarAgente,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.blueAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 5,
+                ),
+                icon: _contactando 
+                    ? const SizedBox.shrink() 
+                    : const Icon(Icons.chat, color: Colors.white),
+                label: _contactando
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Contactar Agente',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 30), // Espacio extra al final
         ],
       ),
     );
   }
 
-  // Widget auxiliar para mostrar íconos y texto
   Widget _infoRow(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.blueAccent),
-          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: Colors.blueAccent),
+          ),
+          const SizedBox(width: 12),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 16))),
         ],
       ),

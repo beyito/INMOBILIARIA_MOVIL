@@ -21,6 +21,8 @@ import 'package:movil_inmobiliaria/views/contrato_anticretico/crear_contrato_pag
 import 'package:movil_inmobiliaria/views/contrato_alquiler/contrato_alquiler_list_page.dart';
 import 'package:movil_inmobiliaria/views/contrato_alquiler/contrato_alquiler_form_page.dart';
 import 'package:movil_inmobiliaria/views/contrato_alquiler/contrato_alquiler_detail_page.dart';
+import 'package:movil_inmobiliaria/views/mapainteractivo/mapa_completo_view.dart';
+import 'package:movil_inmobiliaria/views/inmueble/inmueble_loader_view.dart';
 // Función para verificar si hay token
 Future<bool> isLoggedIn() async {
   final prefs = await SharedPreferences.getInstance();
@@ -110,6 +112,21 @@ GoRoute(
     return ContratoAlquilerDetailPage(contratoId: id);
   },
 ),
+GoRoute(
+      path: '/mapa-explorar',
+      builder: (context, state) => const MapaCompletoView(),
+    ),
+    GoRoute(
+      path: '/inmueble/:id',
+      builder: (context, state) {
+        // Extraemos el número "9" de la URL "/inmueble/9"
+        final idStr = state.pathParameters['id'] ?? '0';
+        final id = int.tryParse(idStr) ?? 0;
+        
+        // Retornamos el Loader que descargará los datos
+        return InmuebleLoaderView(inmuebleId: id);
+      },
+    ),
 
   ],
   redirect: (context, state) async {

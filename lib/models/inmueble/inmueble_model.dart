@@ -15,11 +15,11 @@ class FotoModel {
   });
 
   factory FotoModel.fromJson(Map<String, dynamic> json) => FotoModel(
-    id: json['id'],
-    url: json['url'],
-    descripcion: json['descripcion'],
-    fechaCreacion: json['fecha_creacion'],
-    isActive: json['is_active'],
+    id: json['id'] ?? 0,
+    url: json['url'] ?? '',
+    descripcion: json['descripcion'], // Este puede ser null porque es String?
+    fechaCreacion: json['fecha_creacion'] ?? '',
+    isActive: json['is_active'] ?? false,
   );
 }
 
@@ -39,10 +39,10 @@ class TipoInmuebleModel {
 
   factory TipoInmuebleModel.fromJson(Map<String, dynamic> json) =>
       TipoInmuebleModel(
-        id: json['id'],
-        nombre: json['nombre'],
-        descripcion: json['descripcion'],
-        isActive: json['is_active'],
+        id: json['id'] ?? 0,
+        nombre: json['nombre']?.toString() ?? 'Sin categoría',
+        descripcion: json['descripcion']?.toString() ?? '',
+        isActive: json['is_active'] ?? false,
       );
 }
 
@@ -89,27 +89,57 @@ class InmuebleModel {
     required this.cliente,
   });
 
-  factory InmuebleModel.fromJson(Map<String, dynamic> json) => InmuebleModel(
-    id: json['id'] ?? 0,
-    fotos:
-        (json['fotos'] as List?)?.map((f) => FotoModel.fromJson(f)).toList() ??
-        [],
-    tipoInmueble: TipoInmuebleModel.fromJson(json['tipo_inmueble']),
-    titulo: json['titulo'],
-    descripcion: json['descripcion'],
-    direccion: json['direccion'],
-    ciudad: json['ciudad'],
-    zona: json['zona'],
-    superficie: json['superficie'],
-    dormitorios: json['dormitorios'] ?? 0,
-    banos: json['baños'] ?? 0,
-    precio: json['precio'],
-    tipoOperacion: json['tipo_operacion'],
-    estado: json['estado'],
-    latitud: double.parse(json['latitud']),
-    longitud: double.parse(json['longitud']),
-    isActive: json['is_active'],
-    agente: json['agente'] ?? 0,
-    cliente: json['cliente'] ?? 0,
-  );
+  factory InmuebleModel.fromJson(Map<String, dynamic> json) {
+    // 🛡️ HELPERS DE SEGURIDAD 🛡️
+    // Estas funciones locales evitan que la app se cierre si falta un dato
+
+    // Convierte cualquier cosa a String. Si es null, devuelve cadena vacía.
+    String parseString(dynamic val) => val?.toString() ?? '';
+
+    // Convierte a int de forma segura.
+    int parseInt(dynamic val) => int.tryParse(val?.toString() ?? '0') ?? 0;
+
+    // Convierte a double de forma segura (para coordenadas).
+    double parseDouble(dynamic val) {
+      if (val == null) return 0.0;
+      return double.tryParse(val.toString()) ?? 0.0;
+    }
+
+    return InmuebleModel(
+      id: json['id'] ?? 0,
+      
+      fotos: (json['fotos'] as List?)
+          ?.map((f) => FotoModel.fromJson(f))
+          .toList() ?? [],
+
+      // Si 'tipo_inmueble' es null, creamos uno genérico para no romper la app
+      tipoInmueble: json['tipo_inmueble'] != null
+          ? TipoInmuebleModel.fromJson(json['tipo_inmueble'])
+          : TipoInmuebleModel(id: 0, nombre: 'N/A', descripcion: '', isActive: false),
+
+      // Usamos el helper parseString para todos los textos obligatorios
+      titulo: parseString(json['titulo']),
+      descripcion: parseString(json['descripcion']),
+      direccion: parseString(json['direccion']),
+      ciudad: parseString(json['ciudad']),
+      zona: parseString(json['zona']),
+      superficie: parseString(json['superficie']),
+      
+      dormitorios: parseInt(json['dormitorios']),
+      // Intenta leer 'baños' (con ñ) y si no existe, busca 'banos' (sin ñ)
+      banos: parseInt(json['baños'] ?? json['banos']),
+      
+      precio: parseString(json['precio']),
+      tipoOperacion: parseString(json['tipo_operacion']),
+      estado: parseString(json['estado']),
+      
+      // Parseo seguro de coordenadas
+      latitud: parseDouble(json['latitud']),
+      longitud: parseDouble(json['longitud']),
+      
+      isActive: json['is_active'] ?? false,
+      agente: parseInt(json['agente']),
+      cliente: parseInt(json['cliente']),
+    );
+  }
 }
